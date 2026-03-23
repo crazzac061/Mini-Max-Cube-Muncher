@@ -688,7 +688,7 @@
         const MAXP = +1, MINP = -1;
 
         // ============================================================
-        // STEP 2: EVALUATE function (direct port from Python)
+        // STEP 2: EVALUATE function
         //   state  = cubes remaining AFTER the move just played
         //   player = who just played (they picked the last cube)
         //
@@ -723,13 +723,23 @@
             const key = `${state},${player}`;
             if (memo.has(key)) return memo.get(key);
 
-            // Recurse over every possible move (take 1, take 2, take K)
-            const scores = choices.map(c => minimax(state - c, -player, choices).score);
+            // Filter for valid moves only (must be able to take that many cubes)
+            const validMoves = choices.filter(c => state - c >= 0);
 
-            // MAX player picks the move with the HIGHEST score
-            // MIN player picks the move with the LOWEST score
-            let bestScore = (player === MAXP) ? Math.max(...scores) : Math.min(...scores);
-            let moveIdx = scores.indexOf(bestScore);
+            // If for some reason no moves are possible (shouldn't happen as '1' is always a choice)
+            if (validMoves.length === 0) {
+                return { score: evaluate(state, player), moveIdx: 0 };
+            }
+
+            // Recurse over valid moves
+            const branchScores = validMoves.map(c => minimax(state - c, -player, choices).score);
+
+            // MAX player (AI) picks the HIGHEST score; MIN player (Human) picks the LOWEST
+            let bestScore = (player === MAXP) ? Math.max(...branchScores) : Math.min(...branchScores);
+
+            // Find the best move among valid moves and get its original index in the choices array
+            let bestMoveValue = validMoves[branchScores.indexOf(bestScore)];
+            let moveIdx = choices.indexOf(bestMoveValue);
 
             const result = { score: bestScore, moveIdx };
             memo.set(key, result);
@@ -742,7 +752,7 @@
         let M, K, choices, currentM, round;
 
         // ============================================================
-        // STEP 5: INPUT VALIDATION (mirrors Python validateM / validateK)
+        // STEP 5: INPUT VALIDATION
         // ============================================================
         function validateSetup() {
             const mRaw = document.getElementById('inputM').value.trim();
@@ -771,9 +781,7 @@
             return ok ? { mVal, kVal } : null;
         }
 
-        // ============================================================
-        // STEP 6: START GAME
-        // ============================================================
+
         function startGame() {
             const vals = validateSetup();
             if (!vals) return;
